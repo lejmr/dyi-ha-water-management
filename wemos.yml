@@ -46,25 +46,22 @@ sensor:
 # water level sensor
 # https://esphome.io/components/sensor/modbus_controller.html
   - platform: modbus_controller
-    modbus_controller_id: qd
-    name: "Water level"
-    id: modbus_water_level
+    modbus_controller_id: mod_well
+    name: "Well water level"
+    id: modbus_well_water_level
     register_type: holding
     address: 0x0004
     unit_of_measurement: "cm"
     value_type: S_WORD
-    
-  - platform: template
-    name: "Water level with NaN"
-    lambda: |-
-      if (isnan(id(modbus_water_level).state)) {
-        return NAN;
-      } else {
-        return id(modbus_water_level).state;
-      }
-    update_interval: 5s
 
-    
+  - platform: modbus_controller
+    modbus_controller_id: mod_tank
+    name: "Tank water level"
+    id: modbus_tank_water_level
+    register_type: holding
+    address: 0x0004
+    unit_of_measurement: "cm"
+    value_type: S_WORD
 
 # Reports the WiFi signal strength
   - platform: wifi_signal
@@ -81,25 +78,40 @@ text_sensor:
       name: "IP Address"
 
 uart:
-  id: mod_bus
-  tx_pin: GPIO38
-  rx_pin: GPIO40
-  baud_rate: 9600
-  data_bits: 8
-  stop_bits: 1
-  parity: NONE
-  debug: 
+  - id: uart_well
+    tx_pin: GPIO01
+    rx_pin: GPIO04
+    baud_rate: 9600
+    data_bits: 8
+    stop_bits: 1
+    parity: NONE
+    debug: 
+  - id: uart_tank
+    tx_pin: GPIO40
+    rx_pin: GPIO36
+    baud_rate: 9600
+    data_bits: 8
+    stop_bits: 1
+    parity: NONE
+    debug: 
 
 modbus:
-  id: modbus1
-  uart_id: mod_bus
-  send_wait_time: 500ms
-  flow_control_pin: GPIO36
+  - id: modbus_well
+    uart_id: uart_well
+    send_wait_time: 500ms
+    flow_control_pin: GPIO02
+  - id: modbus_tank
+    uart_id: uart_tank
+    send_wait_time: 500ms
+    flow_control_pin: GPIO38
 
 modbus_controller:
-  - id: qd
-    # address: 0x01
-    modbus_id: modbus1
+  - id: mod_well
+    modbus_id: modbus_well
+    setup_priority: -10
+    update_interval: 5s
+  - id: mod_tank
+    modbus_id: modbus_tank
     setup_priority: -10
     update_interval: 5s
 
