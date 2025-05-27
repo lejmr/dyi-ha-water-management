@@ -28,7 +28,8 @@ logger:
 captive_portal:
 
 api:
-  password: "1234343"
+  encryption:
+    key: !secret api_key
 
 # restart 
 button:
