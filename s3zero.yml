@@ -35,6 +35,34 @@ button:
   - platform: restart
     name: Restart
 
+# Konfigurovatelné parametry nádrží - plochy
+number:
+  - platform: template
+    name: "Tank area"
+    id: tank_area_config
+    unit_of_measurement: "m²"
+    min_value: 0.1
+    max_value: 100.0
+    step: 0.01
+    initial_value: 6.56
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    icon: "mdi:crop-square"
+
+  - platform: template
+    name: "Well area"
+    id: well_area_config
+    unit_of_measurement: "m²"
+    min_value: 0.01
+    max_value: 20.0
+    step: 0.01
+    initial_value: 0.78
+    optimistic: true
+    restore_value: true
+    entity_category: config
+    icon: "mdi:circle-outline"
+
 sensor:
 # Reports how long the device has been powered (in minutes)
   - platform: uptime
@@ -53,6 +81,7 @@ sensor:
     address: 0x0004
     unit_of_measurement: "cm"
     value_type: S_WORD
+    icon: "mdi:arrow-expand-vertical"
 
   - platform: modbus_controller
     modbus_controller_id: mod_tank
@@ -62,11 +91,78 @@ sensor:
     address: 0x0004
     unit_of_measurement: "cm"
     value_type: S_WORD
+    icon: "mdi:arrow-expand-vertical"
 
 # Reports the WiFi signal strength
   - platform: wifi_signal
     name: Wifi Signal
     update_interval: 60s
+
+# Výpočet objemu tanku (konfigurovatelná plocha)
+  - platform: template
+    name: "Tank water volume"
+    id: tank_water_volume
+    unit_of_measurement: "m³"
+    device_class: water
+    state_class: measurement
+    accuracy_decimals: 3
+    icon: "mdi:cube-outline"
+    lambda: |-
+      if (id(modbus_tank_water_level).has_state() && 
+          id(tank_area_config).has_state()) {
+        float level_cm = id(modbus_tank_water_level).state;
+        if (level_cm >= 0) {
+          float level_m = level_cm / 100.0;
+          float tank_area_m2 = id(tank_area_config).state;
+          return level_m * tank_area_m2;
+        }
+      }
+      return {};
+    update_interval: 5s
+
+  # Výpočet objemu studny (konfigurovatelná plocha)
+  - platform: template
+    name: "Well water volume"
+    id: well_water_volume
+    unit_of_measurement: "m³"
+    device_class: water
+    state_class: measurement
+    accuracy_decimals: 3
+    icon: "mdi:cube-outline"
+    lambda: |-
+      if (id(modbus_well_water_level).has_state() && 
+          id(well_area_config).has_state()) {
+        float level_cm = id(modbus_well_water_level).state;
+        if (level_cm >= 0) {
+          float level_m = level_cm / 100.0;
+          float well_area_m2 = id(well_area_config).state;
+          return level_m * well_area_m2;
+        }
+      }
+      return {};
+    update_interval: 5s
+
+  # Celkový objem vody
+  - platform: template
+    name: "Total water volume"
+    id: total_water_volume
+    unit_of_measurement: "m³"
+    device_class: water
+    state_class: measurement
+    accuracy_decimals: 3
+    lambda: |-
+      float tank_vol = 0;
+      float well_vol = 0;
+      
+      if (id(tank_water_volume).has_state()) {
+        tank_vol = id(tank_water_volume).state;
+      }
+      if (id(well_water_volume).has_state()) {
+        well_vol = id(well_water_volume).state;
+      }
+      
+      return tank_vol + well_vol;
+    update_interval: 5s
 
 text_sensor:
   - platform: version
@@ -117,4 +213,4 @@ modbus_controller:
 
 status_led:
   pin:
-    number: GPIO15
+    number: GPIO21
